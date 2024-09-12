@@ -26,7 +26,7 @@ from plaso import __version__ as plaso_version
 from plaso.cli import pinfo_tool
 
 from .app import celery
-from .utils import log2timeline_status_to_dict
+from .utils import log2timeline_status_to_dict,mount_input,umount_input
 
 # Task name used to register and route the task to the correct queue.
 TASK_NAME = "openrelik-worker-plaso.tasks.log2timeline"
@@ -83,7 +83,6 @@ def log2timeline(
         "--storage-file",
         output_file.path,
     ]
-    command_string = " ".join(command[:5])
 
     # TODO: Add user defined configurations
     if user_config and user_config.get("parsers"):
@@ -100,8 +99,16 @@ def log2timeline(
         # Add the data to be processed
         command.append(temp_dir)
     else:
+        # TODO: remove when path/type parameter is in UI or config file
+        input_files = [{"path":"test-disk2", "type":"gce"}] # GCE path = disk_name
+        # Mount the cloud disk and return the path or return the original input file
+        input_files=mount_input(input_files) 
+        
         command.append(input_files[0].get("path"))
-
+        print("DEBUG")
+        print(command)
+        
+    command_string = " ".join(command)
     process = subprocess.Popen(command)
     while process.poll() is None:
         if not os.path.exists(status_file.path):
@@ -126,6 +133,9 @@ def log2timeline(
     if not output_files:
         raise RuntimeError("log2timeline didn't create any output files")
 
+    if input_files[0].get("type") == "gce":
+        umount_input(input_files) # This will umount the GCE disk or do nothing if not a GCP disk
+    
     return task_result(
         output_files=output_files,
         workflow_id=workflow_id,

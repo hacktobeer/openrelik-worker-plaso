@@ -17,8 +17,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-poetry \
     gpg-agent \
     wget \
+    curl \
     tzdata \
   && rm -rf /var/lib/apt/lists/*
+
+# Install optional GCP dependencies (to be able to process GCE disks)
+RUN wget -O -  https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    apt-transport-https \
+    ca-certificates \
+    gpg \
+    google-cloud-cli \
+  && rm -rf /var/lib/apt/lists/*
+   
+
 
 # Install Plaso
 RUN add-apt-repository -y ppa:gift/$PPA_TRACK
